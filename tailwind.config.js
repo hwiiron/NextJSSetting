@@ -7,7 +7,11 @@ module.exports = {
     "./app/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ["Pretendard", "Arial", "sans-serif"],
+      },
+    },
   },
   plugins: [],
 };
