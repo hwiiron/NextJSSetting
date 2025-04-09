@@ -1,0 +1,70 @@
+name: Create Feature Branch on Issue Creation
+
+# 이 워크플로는 이슈가 생성되었을 때(trigger: issues.opened) 자동 실행됩니다.
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  create-branch:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. GitHub 리포지토리의 main 브랜치를 체크아웃합니다.
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.TOKEN }} # 리포지토리에 접근 가능한 Personal Access Token
+          ref: main # 기준 브랜치는 'main'
+
+      # 2. 이슈 제목과 번호를 이용해 브랜치를 생성하고 푸시합니다.
+      - name: Create feature branch
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }} # 이슈 번호
+          ISSUE_TITLE: ${{ github.event.issue.title }} # 이슈 제목
+        run: |
+          # 공백 → 하이픈으로 변환
+          ISSUE_TITLE_CLEAN="${ISSUE_TITLE// /-}"
+
+          # 영문, 한글, 숫자, 언더스코어(_), 하이픈(-) 외의 특수문자는 모두 제거
+          ISSUE_TITLE_CLEAN="${ISSUE_TITLE_CLEAN//[^a-zA-Z0-9가-힣_-]/}"
+
+          # 최종 브랜치 이름 생성 (예: #23_버그수정)
+          BRANCH_NAME="#${ISSUE_NUMBER}_${ISSUE_TITLE_CLEAN}"
+
+          echo "Creating branch: $BRANCH_NAME"
+
+          # git 설정 및 브랜치 생성, 푸시
+          git checkout main                  # main 브랜치로 이동
+          git pull origin main               # 최신 커밋 받아오기
+          git checkout -b "$BRANCH_NAME"     # 새 브랜치 생성
+          git push origin "$BRANCH_NAME"     # 원격 저장소에 브랜치 푸시
+
+      # 3. 이슈에 브랜치명을 댓글로 남깁니다.
+      - name: Comment on issue
+        uses: actions/github-script@v6
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }} # 이슈 번호
+          ISSUE_TITLE: ${{ github.event.issue.title }} # 이슈 제목
+        with:
+          github-token: ${{ secrets.TOKEN }} # 인증 토큰
+          script: |
+            // 이슈 정보 환경변수 읽기
+            const issueNumber = process.env.ISSUE_NUMBER;
+            const rawTitle = process.env.ISSUE_TITLE;
+
+            // 제목 정제: 공백 → 하이픈, 특수문자 제거
+            const cleanedTitle = rawTitle
+              .replace(/ /g, '-')
+              .replace(/[^a-zA-Z0-9가-힣_-]/g, '');
+
+            // 브랜치 이름 포맷 (앞 단계와 일치해야 함)
+            const branchName = `issue-${issueNumber}_${cleanedTitle}`;
+
+            // 이슈에 댓글로 브랜치명만 남기기
+            await github.rest.issues.createComment({
+              issue_number: Number(issueNumber),
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: branchName
+            });
