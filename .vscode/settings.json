@@ -1,0 +1,18 @@
+{
+  // VSCode에서 기본 포맷터로 Prettier를 사용하도록 설정
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+
+  // 파일 저장 시 자동으로 포맷 적용
+  "editor.formatOnSave": true,
+
+  // ESLint가 검사할 언어 타입 지정 (JS, TS, TSX 포함)
+  "eslint.validate": ["javascript", "typescript", "typescriptreact"],
+
+  // ESLint 포맷팅 기능 활성화 (Prettier와 충돌 방지하며 병행 사용 가능)
+  "eslint.format.enable": true,
+
+  // 저장 시 ESLint가 자동으로 fix 가능한 문제들을 수정하게 설정
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "always"
+  }
+}
