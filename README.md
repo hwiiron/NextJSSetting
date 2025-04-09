@@ -1,7 +1,7 @@
 # 🚀 Next.js 프로젝트 초기 세팅 가이드
 
 Next.js + React 18 + Tailwind CSS v3 + TypeScript + ESLint + Prettier 구성으로 프로젝트를 세팅하는 가이드입니다.  
-최신 버전이 아닌 특정 버전(React 18, Tailwind v3)을 사용하며, 일관된 코드 스타일과 폰트 적용까지 포함됩니다.
+최신 버전이 아닌 React 18, Tailwind v3 등 특정 버전을 사용하며, 일관된 코드 스타일, 웹 폰트 적용, 브랜치 자동 생성 및 코드 품질 검사 자동화(GitHub Actions)까지 포함합니다.
 
 ---
 
@@ -271,6 +271,129 @@ theme: {
     },
   },
 }
+```
+
+---
+
+## 🛡️ GitHub Actions - 코드 품질 검사 및 브랜치 자동 생성
+
+### .github/workflows/lint.yml
+
+```bash
+name: Code Quality Check
+
+# main 브랜치에 대한 Pull Request가 열릴 때 워크플로 실행
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint & Prettier Check
+    runs-on: ubuntu-latest # GitHub에서 제공하는 최신 Ubuntu 러너에서 실행
+
+    steps:
+      # 1. 코드 체크아웃
+      - name: Checkout Code
+        uses: actions/checkout@v3 # PR 코드가 포함된 브랜치를 가져옴
+
+      # 2. Node.js 환경 설정
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20" # 프로젝트에서 사용하는 Node.js 버전에 맞게 설정
+
+      # 3. 의존성 설치 (package-lock.json 기반으로 정확한 버전 설치)
+      - name: Install dependencies
+        run: npm ci # 'npm install'보다 빠르고 일관성 있게 설치
+
+      # 4. ESLint 검사 실행 (.ts, .tsx 파일 대상)
+      - name: Run ESLint
+        run: npx eslint . --ext .ts,.tsx # 프로젝트 전체에 대해 TypeScript 린트 검사 수행
+
+      # 5. Prettier 포맷 검사
+      - name: Run Prettier Check
+        run: npx prettier "**/*.{js,ts,jsx,tsx,json,md,css}" --check
+        # 지정된 확장자 파일에 대해 포맷이 Prettier 룰에 맞는지 확인 (수정은 하지 않음)
+```
+
+---
+
+## 🌿 이슈 생성 시 브랜치 자동 생성
+
+### .github/workflows/create-branch.yml
+
+```bash
+name: Create Feature Branch on Issue Creation
+
+# 이 워크플로는 이슈가 생성되었을 때(trigger: issues.opened) 자동 실행됩니다.
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  create-branch:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. GitHub 리포지토리의 main 브랜치를 체크아웃합니다.
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.TOKEN }} # 리포지토리에 접근 가능한 Personal Access Token
+          ref: main # 기준 브랜치는 'main'
+
+      # 2. 이슈 제목과 번호를 이용해 브랜치를 생성하고 푸시합니다.
+      - name: Create feature branch
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }} # 이슈 번호
+          ISSUE_TITLE: ${{ github.event.issue.title }} # 이슈 제목
+        run: |
+          # 공백 → 하이픈으로 변환
+          ISSUE_TITLE_CLEAN="${ISSUE_TITLE// /-}"
+
+          # 영문, 한글, 숫자, 언더스코어(_), 하이픈(-) 외의 특수문자는 모두 제거
+          ISSUE_TITLE_CLEAN="${ISSUE_TITLE_CLEAN//[^a-zA-Z0-9가-힣_-]/}"
+
+          # 최종 브랜치 이름 생성 (예: #23_버그수정)
+          BRANCH_NAME="#${ISSUE_NUMBER}_${ISSUE_TITLE_CLEAN}"
+
+          echo "Creating branch: $BRANCH_NAME"
+
+          # git 설정 및 브랜치 생성, 푸시
+          git checkout main                  # main 브랜치로 이동
+          git pull origin main               # 최신 커밋 받아오기
+          git checkout -b "$BRANCH_NAME"     # 새 브랜치 생성
+          git push origin "$BRANCH_NAME"     # 원격 저장소에 브랜치 푸시
+
+      # 3. 이슈에 브랜치명을 댓글로 남깁니다.
+      - name: Comment on issue
+        uses: actions/github-script@v6
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }} # 이슈 번호
+          ISSUE_TITLE: ${{ github.event.issue.title }} # 이슈 제목
+        with:
+          github-token: ${{ secrets.TOKEN }} # 인증 토큰
+          script: |
+            // 이슈 정보 환경변수 읽기
+            const issueNumber = process.env.ISSUE_NUMBER;
+            const rawTitle = process.env.ISSUE_TITLE;
+
+            // 제목 정제: 공백 → 하이픈, 특수문자 제거
+            const cleanedTitle = rawTitle
+              .replace(/ /g, '-')
+              .replace(/[^a-zA-Z0-9가-힣_-]/g, '');
+
+            // 브랜치 이름 포맷 (앞 단계와 일치해야 함)
+            const branchName = `issue-${issueNumber}_${cleanedTitle}`;
+
+            // 이슈에 댓글로 브랜치명만 남기기
+            await github.rest.issues.createComment({
+              issue_number: Number(issueNumber),
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: branchName
+            });
 ```
 
 ---
