@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Next.js Project Setting",
   description:
-    "Next.js(React 18 Version), TypeScript, Tailwind(3 Version), Prettier, ESLint Install & Setting",
+    "Next.js(React 18 Version, App Router), TypeScript, Tailwind(3 Version), Prettier, ESLint Install & Setting",
 };
 
 export default function RootLayout({
