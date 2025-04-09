@@ -19,6 +19,12 @@ const compat = new FlatCompat({
 
 // 최종 ESLint 설정 배열
 const eslintConfig = [
+  {
+    // 다음 경로들은 ESLint 검사에서 제외함
+    // ".next/" : Next.js 빌드 결과물로, 린트 대상 아님
+    // "node_modules/" : 외부 패키지 디렉토리로, 린트 대상 아님
+    ignores: [".next/", "node_modules/"],
+  },
   // 기존 방식의 확장 구성을 FlatConfig 스타일로 변환하여 적용
   ...compat.extends(
     "next/core-web-vitals", // Next.js 권장 린트 규칙 (웹 바이탈 포함)
